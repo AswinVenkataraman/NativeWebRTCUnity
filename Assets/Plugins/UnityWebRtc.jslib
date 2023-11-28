@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
 				]
 			}
 		);
-
+		
 		peerConnection.onicecandidate = function (Candidate) 
 		{ 
 			if(Candidate.candidate != null)
@@ -22,6 +22,7 @@ mergeInto(LibraryManager.library, {
 				peerConnection.addIceCandidate(Candidate.candidate);
 				SendMessage('JSListener', 'OnCandidateReceived', JSON.stringify(Candidate.candidate))
 			}
+			
 		}
 	  
 
@@ -32,15 +33,58 @@ mergeInto(LibraryManager.library, {
 		
 		if(clientID == 1)
 		{
+			console.log("Called here 1");
 			dataChannel = peerConnection.createDataChannel("TestChannel");
 
-			dataChannel.addEventListener("open", (event) => {
-			console.log("TestChannel");
-			dataChannel.send("Hello From clientID = "+clientID);
+			dataChannel.addEventListener("open", (event) => 
+			{
+				console.log("TestChannel");
+				dataChannel.send("Hello From clientID = "+clientID);
 			});
+			
+			
+			const mediaConstraints = {
+			  audio: true, // We want an audio track
+			  video: true, // And we want a video track
+			  preferCurrentTab : true,
+			};
+
+	
+			navigator.mediaDevices.getDisplayMedia(mediaConstraints).then((mediaStream) => 
+			{
+				   for (const track of mediaStream.getTracks())
+						peerConnection.addTrack(track, mediaStream);		
+
+				peerConnection.addStream(mediaStream);						
+						console.log("Peer Track Added");
+			});
+			
+			
 		}
-		else {
+		else 
+		{
 		
+			console.log("Called here 2");
+
+			peerConnection.ontrack = (ev) => 
+			{
+				console.log("Peer track received");
+
+				console.log("streams = "+JSON.stringify(ev.streams[0]));
+
+				inboundStream = new MediaStream();
+
+				inboundStream.onaddtrack = (event) => {
+				  console.log("track added");
+				};
+				
+				inboundStream.addTrack(ev.track);
+				
+
+			const video = document.createElement("video");
+			video.srcObject = ev.streams[0];				
+
+			};
 			peerConnection.ondatachannel = (ev) => 
 			{
 			  receiveChannel = ev.channel;
@@ -49,6 +93,7 @@ mergeInto(LibraryManager.library, {
 			  console.log("Message = "+message.data);
 			  };
 			};
+
 		
 		}
 	  
@@ -107,6 +152,21 @@ mergeInto(LibraryManager.library, {
   {
 	console.log("### OnCandidateReceived Added");
 	peerConnection.addIceCandidate( {candidate: UTF8ToString(_candidate), sdpMid: UTF8ToString(_sdpMid), sdpMLineIndex: _sdpMLineIndex});
+  },
+  
+  StartCapture: function ()
+  {
+	  async function startCapture() {
+	  let captureStream;
+
+	  try {
+		captureStream =
+		  await navigator.mediaDevices.getDisplayMedia();
+	  } catch (err) {
+		console.error(`Error: ${err}`);
+	  }
+	  return captureStream;
+	}
   }
 
 
